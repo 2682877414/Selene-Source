@@ -1,0 +1,41 @@
+name: 仅构建 Windows
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 获取版本号
+        id: get_version
+        shell: pwsh
+        run: |
+          $line = Get-Content pubspec.yaml | Select-String '^version:'
+          if ($line) { $version = $line.Line -replace 'version: ', '' | Trim } else { $version = "1.0.0" }
+          $version = $version -split '\+' | Select-Object -First 1
+          echo "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8
+
+      - name: 安装 Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.7'
+          channel: stable
+
+      - name: 构建 Windows
+        run: |
+          flutter pub get
+          flutter build windows --release
+
+      - name: 打包 ZIP
+        run: |
+          mkdir dist
+          Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath "dist/梦瑶影视-Windows-${{ steps.get_version.outputs.version }}.zip" -Force
+
+      - name: 上传文件
+        uses: actions/upload-artifact@v4
+        with:
+          name: Windows-Release
+          path: dist/*.zip
