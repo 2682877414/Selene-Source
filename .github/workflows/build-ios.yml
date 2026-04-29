@@ -12,19 +12,22 @@ jobs:
         with:
           flutter-version: 3.41.7
 
+      - name: 获取版本号
+        run: |
+          VERSION=$(grep 'version:' pubspec.yaml | awk '{print $2}' | cut -d'+' -f1)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
       - run: flutter pub get
       - run: flutter build ios --release --no-codesign
 
-      # 👇 直接打包成你要的名字
-      - name: 打包成 IPA
+      - name: 打包 IPA
         run: |
           mkdir -p Payload
           cp -r build/ios/iphoneos/Runner.app Payload/
-          zip -r 沐瑶影视2.0.ipa Payload/
+          zip -r "沐瑶影视$VERSION.ipa" Payload/
 
-      # 👇 直接上传 .ipa 文件
-      - name: 上传 IPA
+      - name: 上传产物
         uses: actions/upload-artifact@v4
         with:
-          name: 沐瑶影视2.0-iOS
-          path: 沐瑶影视2.0.ipa
+          name: 沐瑶影视${{ env.VERSION }}-iOS
+          path: "沐瑶影视${{ env.VERSION }}.ipa"
