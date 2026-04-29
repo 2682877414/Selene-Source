@@ -1,8 +1,8 @@
 name: Windows x64 单独构建
+
 on:
-  push:
-    tags: ['v*']
   workflow_dispatch:
+  
 permissions:
   contents: write
 jobs:
