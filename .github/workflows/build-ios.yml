@@ -9,17 +9,14 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: 3.41.7
-      - uses: actions/setup-java@v5
-        with:
-          distribution: 'zulu'
-          java-version: '21'
+
       - run: flutter pub get
-      - name: Build iOS
-        run: flutter build ipa --release
-      - name: Find built files
-        run: find . -name "*.ipa" -o -name "*.xcarchive"
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+
+      # 关键：无代码签名构建 Runner.app（唯一能成功的方式）
+      - run: flutter build ios --release --no-codesign
+
+      # 上传正确产物
+      - uses: actions/upload-artifact@v4
         with:
           name: ios-release
-          path: build/ios/ipa/*.ipa
+          path: build/ios/iphoneos/Runner.app
