@@ -1,10 +1,10 @@
-name: 梦瑶影视 2.0全平台（Windows+Android+macOS+iOS）
+name: 梦瑶影视 2.0全平台（官方同款分文件）
 
 on:
   push:
     tags:
       - 'v*'
-  workflow_dispatch:
+  workflow_dispatch'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -19,10 +19,9 @@ jobs:
     runs-on: windows-latest
     name: Build Windows
     steps:
-      - name: Clone repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Get version from pubspec.yaml
+      - name: Get version
         id: get_version
         shell: pwsh
         run: |
@@ -41,35 +40,33 @@ jobs:
         with:
           flutter-version: '3.41.7'
           channel: stable
-          cache: true
 
       - name: Build Windows
         shell: pwsh
         run: |
           $version = "${{ steps.get_version.outputs.version }}"
           flutter pub get
-          mkdir dist -Force
           flutter build windows --release
+          mkdir dist
           Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath "dist/selene-$version-windows-x64-portable.zip" -Force
 
-      - name: Upload artifacts
+      - name: Upload Windows
         uses: actions/upload-artifact@v4
         with:
-          name: windows-release
-          path: dist/*
+          name: selene-${{ steps.get_version.outputs.version }}-windows-x64-portable.zip
+          path: dist/*.zip
 
   build-android:
     runs-on: ubuntu-latest
     name: Build Android
     steps:
-      - name: Clone repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Get version from pubspec.yaml
+      - name: Get version
         id: get_version
         run: |
           VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | tr -d ' ')
-          if [ -z "$VERSION" ]; then VERSION="1.0.0"; fi
+          [ -z "$VERSION" ] && VERSION="1.0.0"
           VERSION=$(echo "$VERSION" | cut -d'+' -f1)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
@@ -78,7 +75,6 @@ jobs:
         with:
           flutter-version: '3.41.7'
           channel: stable
-          cache: true
 
       - name: Install Java
         uses: actions/setup-java@v5
@@ -86,34 +82,32 @@ jobs:
           distribution: 'zulu'
           java-version: 21
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Build Android
+      - name: Build Android APKs
         run: |
           flutter pub get
-          flutter build apk --release
+          # 构建多架构 APK，和官方一样分 armv7a/armv8
+          flutter build apk --release --split-per-abi
           mkdir -p dist
-          cp build/app/outputs/flutter-apk/app-release.apk dist/selene-${{ steps.get_version.outputs.version }}-android.apk
+          cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk dist/selene-${{ steps.get_version.outputs.version }}-armv8.apk
+          cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk dist/selene-${{ steps.get_version.outputs.version }}-armv7a.apk
 
-      - name: Upload artifacts
+      - name: Upload Android
         uses: actions/upload-artifact@v4
         with:
-          name: android-release
-          path: dist/*
+          name: android-apks
+          path: dist/*.apk
 
   build-macos-ios:
     runs-on: macos-latest
-    name: Build macOS iOS
+    name: Build macOS & iOS
     steps:
-      - name: Clone repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Get version from pubspec.yaml
+      - name: Get version
         id: get_version
         run: |
           VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | tr -d ' ')
-          if [ -z "$VERSION" ]; then VERSION="1.0.0"; fi
+          [ -z "$VERSION" ] && VERSION="1.0.0"
           VERSION=$(echo "$VERSION" | cut -d'+' -f1)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
@@ -122,18 +116,23 @@ jobs:
         with:
           flutter-version: '3.41.7'
           channel: stable
-          cache: true
 
-      - name: Build Apple
+      - name: Build macOS & iOS
         continue-on-error: true
         run: |
           flutter pub get
+          # 构建 macOS dmg（分架构）
           flutter build macos --release
+          # 构建 iOS ipa（不签名）
           flutter build ios --release --no-codesign
+          mkdir -p dist
+          # 把生成的文件复制到 dist，方便上传
+          cp build/macos/Build/Products/Release/*.dmg dist/ 2>/dev/null || true
+          cp build/ios/ipa/*.ipa dist/ 2>/dev/null || true
 
-      - name: Upload artifacts
+      - name: Upload macOS & iOS
         uses: actions/upload-artifact@v4
         continue-on-error: true
         with:
-          name: macos-ios-release
-          path: build/
+          name: macos-ios-files
+          path: dist/*
