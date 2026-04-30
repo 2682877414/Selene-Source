@@ -23,7 +23,7 @@ jobs:
       - name: 构建 Windows 正式版
         run: flutter build windows --release
 
-      # 新增：把构建结果打包成一个 zip 文件
+      # 把构建结果打包成一个 zip 文件
       - name: 打包 Windows 安装包
         run: |
           cd build/windows/x64/runner/Release
