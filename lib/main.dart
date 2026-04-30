@@ -114,13 +114,13 @@ class _AppWrapperState extends State<AppWrapper> {
         // 本地模式：尝试刷新订阅内容
         try {
           final subscriptionUrl =
-              await LocalModeStorageService.getSubscriptionUrl();
+          await LocalModeStorageService.getSubscriptionUrl();
           if (subscriptionUrl != null && subscriptionUrl.isNotEmpty) {
             final response = await http.get(Uri.parse(subscriptionUrl));
             if (response.statusCode == 200) {
               final content =
-                  await SubscriptionService.parseSubscriptionContent(
-                      response.body);
+              await SubscriptionService.parseSubscriptionContent(
+                  response.body);
               if (content != null) {
                 if (content.searchResources != null && content.searchResources!.isNotEmpty) {
                   await LocalModeStorageService.saveSearchSources(
@@ -198,18 +198,18 @@ class _AppWrapperState extends State<AppWrapper> {
                 gradient: themeService.isDarkMode
                     ? null
                     : const LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Color(0xFFe6f3fb),
-                          Color(0xFFeaf3f7),
-                          Color(0xFFf7f7f3),
-                          Color(0xFFe9ecef),
-                          Color(0xFFdbe3ea),
-                          Color(0xFFd3dde6),
-                        ],
-                        stops: [0.0, 0.18, 0.38, 0.60, 0.80, 1.0],
-                      ),
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color(0xFFe6f3fb),
+                    Color(0xFFeaf3f7),
+                    Color(0xFFf7f7f3),
+                    Color(0xFFe9ecef),
+                    Color(0xFFdbe3ea),
+                    Color(0xFFd3dde6),
+                  ],
+                  stops: [0.0, 0.18, 0.38, 0.60, 0.80, 1.0],
+                ),
               ),
               child: Center(
                 child: Column(
