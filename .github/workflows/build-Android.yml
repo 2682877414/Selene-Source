@@ -1,0 +1,46 @@
+name: Android 单独构建（终极安全签名 · 零泄露）
+on: workflow_dispatch
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.41.7
+
+      - name: 安装 Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'zulu'
+          java-version: '21'
+
+      - name: 自动获取版本号
+        run: |
+          VERSION=$(grep 'version:' pubspec.yaml | awk '{print $2}' | cut -d'+' -f1)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: 还原签名文件
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > my_key.jks
+
+      - name: 配置安卓签名
+        run: |
+          echo "storePassword=${{ secrets.ANDROID_STORE_PASSWORD }}" > key.properties
+          echo "keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}" >> key.properties
+          echo "keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}" >> key.properties
+          echo "storeFile=my_key.jks" >> key.properties
+
+      - run: flutter pub get
+
+      - name: 构建安卓正式 APK
+        run: flutter build apk --release
+
+      - name: 上传 APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: 沐瑶影视${{ env.VERSION }}-安卓正式签名版
+          path: build/app/outputs/flutter-apk/app-release.apk
