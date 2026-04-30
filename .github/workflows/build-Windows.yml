@@ -30,10 +30,10 @@ jobs:
           tar -a -c -f ../../../../MengYaoTV2.0-Windows.zip *
 
       - name: 上传到 Release
-      uses: softprops/action-gh-release@v2
-      with:
-        files: MengYaoTV2.0-Windows.zip  # 只传这个压缩包
-        name: MengYaoTV2.0 ${{ github.ref_name }}
-        tag_name: ${{ github.ref_name }}
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v2
+        with:
+          files: MengYaoTV2.0-Windows.zip  # 只传这个压缩包
+          name: MengYaoTV2.0 ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
