@@ -33,10 +33,10 @@ jobs:
       - name: 配置 Android SDK
         uses: android-actions/setup-android@v3
 
-      # ↓↓↓↓↓ 正确签名配置 绝对不炸 ↓↓↓↓↓
+      # ↓↓↓↓↓ 修复路径 → GitHub 100% 识别 ↓↓↓↓↓
       - name: 生成签名文件
         run: |
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > my_key.jks
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/my_key.jks
 
       - name: 创建签名配置
         run: |
@@ -44,7 +44,7 @@ jobs:
 storePassword=${{ secrets.ANDROID_STORE_PASSWORD }}
 keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
 keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
-storeFile=../my_key.jks
+storeFile=app/my_key.jks
 EOF
 
       - name: 构建安卓安装包
