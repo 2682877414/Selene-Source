@@ -1,7 +1,9 @@
 name: 梦瑶影视 2.0 (Windows)
 
 on:
-  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'  # 触发条件：当推送的标签以 'v' 开头时
 
 jobs:
   build-windows:
