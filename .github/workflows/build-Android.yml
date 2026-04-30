@@ -33,21 +33,23 @@ jobs:
       - name: 配置 Android SDK
         uses: android-actions/setup-android@v3
 
-      # 1. 按它要的路径还原签名文件
+      # 1. 还原签名文件到 android/app 目录（避免路径问题）
       - name: 还原签名文件
         run: |
-          mkdir -p android/app
           echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/my_key.jks
-          # 确认文件存在
-          ls -la android/app/
 
-      # 2. 按build.gradle默认位置配置签名信息
-      - name: 配置签名信息
+      # 2. 直接修改 build.gradle，强制写入签名配置，不依赖 key.properties
+      - name: 注入签名配置
         run: |
-          echo "storePassword=${{ secrets.ANDROID_STORE_PASSWORD }}" > android/key.properties
-          echo "keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}" >> android/key.properties
-          echo "keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}" >> android/key.properties
-          echo "storeFile=app/my_key.jks" >> android/key.properties
+          cat << EOF > android/app/key.properties
+storePassword=${{ secrets.ANDROID_STORE_PASSWORD }}
+keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
+keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+storeFile=my_key.jks
+EOF
+
+          # 强制修改 build.gradle，确保使用上面的配置
+          sed -i '/signingConfigs {/,/}/c\signingConfigs {\n    release {\n        keyAlias = keystoreProperties['keyAlias']\n        keyPassword = keystoreProperties['keyPassword']\n        storeFile = file(keystoreProperties['storeFile'])\n        storePassword = keystoreProperties['storePassword']\n    }\n}' android/app/build.gradle
 
       - name: 构建安卓安装包
         run: |
