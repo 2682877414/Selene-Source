@@ -1,12 +1,10 @@
 # ==========================================================
-# 【安卓永久版 · 完整全注释 · 安全签名】
-# 功能：打标签自动构建4个带正式签名的安卓包，自动上传Release
-# 输出命名：梦瑶影视2.0-Android-xxx-v2.0.0.apk
-# 签名文件以Base64形式加密存储，不上传仓库
+# 【梦瑶影视2.0 · 安卓自动构建】
+# 签名方式：GitHub 5个加密变量 → 安全不泄露
+# 触发：打 v* 标签自动构建 / 手动触发
 # ==========================================================
 name: 梦瑶影视2.0 (安卓自动构建)
 
-# 触发条件：打v*标签自动构建 / 手动触发
 on:
   push:
     tags:
@@ -19,15 +17,11 @@ jobs:
     name: 构建安卓
 
     steps:
-      # ==============================================
-      # 步骤1：拉取项目代码
-      # ==============================================
-      - name: 拉取代码仓库
+      # 1. 拉取代码
+      - name: 拉取代码
         uses: actions/checkout@v4
 
-      # ==============================================
-      # 步骤2：读取项目版本号
-      # ==============================================
+      # 2. 读取版本号
       - name: 读取版本号
         id: get_version
         run: |
@@ -35,18 +29,14 @@ jobs:
           VERSION=$(echo "$VERSION" | cut -d'+' -f1)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      # ==============================================
-      # 步骤3：配置Flutter环境
-      # ==============================================
+      # 3. 配置 Flutter
       - name: 配置 Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.41.7'
           channel: stable
 
-      # ==============================================
-      # 步骤4：安装Java 21（与本地打包环境一致）
-      # ==============================================
+      # 4. 安装 Java 21
       - name: 安装 Java 21
         uses: actions/setup-java@v5
         with:
@@ -54,50 +44,42 @@ jobs:
           java-version: '21'
 
       # ==============================================
-      # 步骤5：【安全方式】从Base64还原签名文件
+      # 5. 从 Base64 恢复签名文件（使用你的5个变量）
       # ==============================================
       - name: 恢复签名文件
         run: |
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/${{ secrets.ANDROID_KEY_FILE }}
+          echo "${{ secrets.ENCODED_KEYSTORE }}" | base64 -d > ${{ secrets.KEY_PATH }}
 
       # ==============================================
-      # 步骤6：写入签名配置文件
+      # 6. 生成 key.properties 配置
       # ==============================================
-      - name: 配置签名信息
+      - name: 生成签名配置
         run: |
           cat > android/key.properties << EOF
-          storePassword=${{ secrets.ANDROID_STORE_PASSWORD }}
-          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
-          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
-          storeFile=${{ secrets.ANDROID_KEY_FILE }}
+          storeFile=${{ secrets.KEY_PATH }}
+          storePassword=${{ secrets.KEY_STORE_PASSWORD }}
+          keyAlias=${{ secrets.KEY_ALIAS }}
+          keyPassword=${{ secrets.KEY_PASSWORD }}
           EOF
 
-      # ==============================================
-      # 步骤7：同意Android SDK许可证
-      # ==============================================
-      - name: 同意 Android SDK 许可证
-        run: |
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "ndk;29.0.14033849"
+      # 7. 安装依赖
+      - name: 安装依赖
+        run: flutter pub get
 
-      # ==============================================
-      # 步骤8：构建带签名的通用APK
-      # ==============================================
+      # 8. 同意 SDK 许可
+      - name: 同意许可
+        run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
+
+      # 9. 构建 APK
       - name: 构建通用APK
-        run: |
-          flutter pub get
-          flutter build apk --release
+        run: flutter build apk --release
 
-      # ==============================================
-      # 步骤9：构建带签名的架构分包APK
-      # ==============================================
-      - name: 构建架构分包APK
+      # 10. 构建架构分包
+      - name: 构建架构APK
         run: flutter build apk --release --split-per-abi
 
-      # ==============================================
-      # 步骤10：重命名为中文名称
-      # ==============================================
-      - name: 重命名APK文件
+      # 11. 重命名APK
+      - name: 重命名APK
         run: |
           VERSION=${{ github.ref_name }}
           DIR=build/app/outputs/flutter-apk
@@ -106,10 +88,8 @@ jobs:
           mv $DIR/app-armeabi-v7a-release.apk       "梦瑶影视2.0-Android-armeabi-v7a-$VERSION.apk"
           mv $DIR/app-x86_64-release.apk            "梦瑶影视2.0-Android-x86_64-$VERSION.apk"
 
-      # ==============================================
-      # 步骤11：上传带签名的产物到Release
-      # ==============================================
-      - name: 上传产物到Release
+      # 12. 上传产物
+      - name: 上传到Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
