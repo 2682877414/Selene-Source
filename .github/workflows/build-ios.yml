@@ -7,8 +7,8 @@ name: 梦瑶影视2.0 (iOS自动构建)
 
 # ==========================================================
 # 触发方式：
-# 1. push tags 打 v 开头标签时自动构建（如 v2.0.0）
-# 2. 支持手动点击 Run workflow 构建
+# 1. 打 v 开头标签自动构建（如 v2.0.0）
+# 2. 支持手动点击 Run Workflow
 # ==========================================================
 on: 
   push:
@@ -18,45 +18,43 @@ on:
 
 jobs:
   build-ios:
-    # iOS 构建必须使用 macOS 环境
+    # iOS 必须用 macOS 环境
     runs-on: macos-latest
     steps:
-      # 拉取项目代码
+      # 1. 拉取代码
       - uses: actions/checkout@v4
 
-      # 安装 Flutter 环境（版本与本地一致）
+      # 2. 安装 Flutter
       - name: 安装 Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: 3.41.7
 
       # ==========================================================
-      # 自动读取 pubspec.yaml 中的版本号
-      # 例如：version: 2.0.0+1 → 提取出 2.0.0
+      # 3. 【已修复】自动读取版本号
+      # 从 pubspec.yaml 提取版本号 2.0.0
       # ==========================================================
       - name: 获取版本号
         run: |
-          VERSION=$(grep 'version:' pubspec.yaml | awk '{print $2}' | cut -d'+' -1)
+          VERSION=$(grep 'version:' pubspec.yaml | awk '{print $2}' | cut -d'+' -f1)
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 
-      # 安装项目依赖
+      # 4. 安装依赖
       - run: flutter pub get
 
       # ==========================================================
-      # 核心：构建 iOS 正式包（关键参数 --no-codesign → 不签名）
-      # 输出：未签名的 Runner.app
+      # 5. 构建 iOS 未签名包（核心命令）
+      # --no-codesign 代表不使用苹果证书签名
       # ==========================================================
       - run: flutter build ios --release --no-codesign
 
-      # 查看 APP 架构信息（用于检查是否正常编译）
+      # 6. 查看编译后架构（检查是否正常）
       - name: 查看架构
         run: lipo -info build/ios/iphoneos/Runner.app/Runner
 
       # ==========================================================
-      # 打包步骤：
-      # 1. 创建 Payload 文件夹（iOS 安装包固定结构）
-      # 2. 将编译好的 APP 复制进去
-      # 3. 压缩成 IPA 文件（iOS 安装包格式）
+      # 7. 打包成 IPA 文件（iOS 安装包格式）
+      # 必须放到 Payload 文件夹再压缩
       # ==========================================================
       - name: 打包成 IPA
         run: |
@@ -65,8 +63,7 @@ jobs:
           zip -r "梦瑶影视${{ env.VERSION }}-iOS-未签名.ipa" Payload/
 
       # ==========================================================
-      # 上传 IPA 安装包
-      # 构建完成后可直接下载使用
+      # 8. 上传安装包，构建完成可直接下载
       # ==========================================================
       - name: 上传产物
         uses: actions/upload-artifact@v4
