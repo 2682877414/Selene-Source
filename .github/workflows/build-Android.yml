@@ -1,46 +1,68 @@
-name: 梦瑶影视 2.0 (Android)
-on: workflow_dispatch
+# ==========================================================
+# 【安卓最终版】一次打出 4 个安装包
+# 包含：
+# 1. 通用全包（所有手机都能用）
+# 2. armeabi-v7a（老手机）
+# 3. arm64-v8a（新手机 95%）
+# 4. x86_64（平板/模拟器）
+# ==========================================================
+name: 梦瑶影视 2.0 (安卓4合1构建)
+
+# 触发方式：打 v 开头标签自动运行
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
 
 jobs:
-  build-android:
+  build_android:
     runs-on: ubuntu-latest
-    name: 构建安卓
     steps:
-      - name: 拉取代码仓库
+      # ==========================
+      # 1. 拉取代码
+      # ==========================
+      - name: 拉取项目代码
         uses: actions/checkout@v4
 
-      - name: 读取版本号
-        id: get_version
-        run: |
-          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | tr -d ' ')
-          VERSION=$(echo "$VERSION" | cut -d'+' -f1)
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: 配置 Flutter
+      # ==========================
+      # 2. 安装 Flutter 环境
+      # ==========================
+      - name: 安装 Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.41.7'
           channel: stable
 
-      - name: 安装 Java
-        uses: actions/setup-java@v5
+      # ==========================
+      # 3. 安装依赖
+      # ==========================
+      - name: 安装依赖
+        run: flutter pub get
+
+      # ==========================
+      # 4. 构建 通用全包（1个）
+      # ==========================
+      - name: 构建通用APK
+        run: flutter build apk --release
+
+      # ==========================
+      # 5. 构建 3个CPU分包
+      # ==========================
+      - name: 构建架构分包APK
+        run: flutter build apk --release --split-per-abi
+
+      # ==========================
+      # 6. 上传全部 4 个APK
+      # ==========================
+      - name: 上传全部安卓包到Release
+        uses: softprops/action-gh-release@v2
         with:
-          distribution: 'zulu'
-          java-version: '21'
-
-      # 👇 👇 👇 这里修复 NDK 许可证问题（真正的炸点）
-      - name: 同意 Android SDK 许可证
-        run: |
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "ndk;29.0.14033849"
-
-      - name: 构建APK
-        run: |
-          flutter pub get
-          flutter build apk --release
-
-      - name: 上传产物
-        uses: actions/upload-artifact@v4
-        with:
-          name: 沐瑶影视-${{ steps.get_version.outputs.version }}
-          path: build/app/outputs/flutter-apk/*.apk
+          files: |
+            build/app/outputs/flutter-apk/app-release.apk
+            build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
+            build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+            build/app/outputs/flutter-apk/app-x86_64-release.apk
+          tag_name: ${{ github.ref_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
