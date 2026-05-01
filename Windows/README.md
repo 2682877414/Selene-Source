@@ -27,8 +27,8 @@
 ```
 
 构建完成后，你会在 `dist/` 目录下找到：
-- `selene-{version}-windows-x64-portable.zip` - 便携版（解压即用）
-- `selene-{version}-windows-x64-setup.exe` - 安装程序
+- `mengyao_video_2-{version}-windows-x64-portable.zip` - 便携版（解压即用）
+- `mengyao_video_2-{version}-windows-x64-setup.exe` - 安装程序
 
 ### 方法 2: 手动构建
 
