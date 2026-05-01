@@ -1,7 +1,8 @@
 # ==========================================================
-# 【安卓永久版 · 完整全注释 · 昨天成功版】
-# 功能：打标签自动构建4个安卓包，自动上传Release
+# 【安卓永久版 · 完整全注释 · 安全签名】
+# 功能：打标签自动构建4个带正式签名的安卓包，自动上传Release
 # 输出命名：梦瑶影视2.0-Android-xxx-v2.0.0.apk
+# 签名文件以Base64形式加密存储，不上传仓库
 # ==========================================================
 name: 梦瑶影视2.0 (安卓自动构建)
 
@@ -14,7 +15,6 @@ on:
 
 jobs:
   build-android:
-    # 构建环境：Ubuntu（安卓必须）
     runs-on: ubuntu-latest
     name: 构建安卓
 
@@ -26,7 +26,7 @@ jobs:
         uses: actions/checkout@v4
 
       # ==============================================
-      # 步骤2：读取项目版本号（从pubspec.yaml获取）
+      # 步骤2：读取项目版本号
       # ==============================================
       - name: 读取版本号
         id: get_version
@@ -36,7 +36,7 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       # ==============================================
-      # 步骤3：安装Flutter环境
+      # 步骤3：配置Flutter环境
       # ==============================================
       - name: 配置 Flutter
         uses: subosito/flutter-action@v2
@@ -45,7 +45,7 @@ jobs:
           channel: stable
 
       # ==============================================
-      # 步骤4：安装Java 21（昨天成功版本）
+      # 步骤4：安装Java 21（与本地打包环境一致）
       # ==============================================
       - name: 安装 Java 21
         uses: actions/setup-java@v5
@@ -54,7 +54,26 @@ jobs:
           java-version: '21'
 
       # ==============================================
-      # 步骤5：同意Android SDK许可证（修复报错）
+      # 步骤5：【安全方式】从Base64还原签名文件
+      # ==============================================
+      - name: 恢复签名文件
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/${{ secrets.ANDROID_KEY_FILE }}
+
+      # ==============================================
+      # 步骤6：写入签名配置文件
+      # ==============================================
+      - name: 配置签名信息
+        run: |
+          cat > android/key.properties << EOF
+          storePassword=${{ secrets.ANDROID_STORE_PASSWORD }}
+          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
+          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          storeFile=${{ secrets.ANDROID_KEY_FILE }}
+          EOF
+
+      # ==============================================
+      # 步骤7：同意Android SDK许可证
       # ==============================================
       - name: 同意 Android SDK 许可证
         run: |
@@ -62,21 +81,21 @@ jobs:
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "ndk;29.0.14033849"
 
       # ==============================================
-      # 步骤6：安装项目依赖
+      # 步骤8：构建带签名的通用APK
       # ==============================================
-      - name: 安装依赖并构建通用APK
+      - name: 构建通用APK
         run: |
           flutter pub get
           flutter build apk --release
 
       # ==============================================
-      # 步骤7：构建架构分包（3个独立版本）
+      # 步骤9：构建带签名的架构分包APK
       # ==============================================
       - name: 构建架构分包APK
         run: flutter build apk --release --split-per-abi
 
       # ==============================================
-      # 步骤8：重命名为中文名称
+      # 步骤10：重命名为中文名称
       # ==============================================
       - name: 重命名APK文件
         run: |
@@ -88,7 +107,7 @@ jobs:
           mv $DIR/app-x86_64-release.apk            "梦瑶影视2.0-Android-x86_64-$VERSION.apk"
 
       # ==============================================
-      # 步骤9：上传所有APK到Release
+      # 步骤11：上传带签名的产物到Release
       # ==============================================
       - name: 上传产物到Release
         uses: softprops/action-gh-release@v2
