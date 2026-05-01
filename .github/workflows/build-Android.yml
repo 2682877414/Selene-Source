@@ -1,11 +1,11 @@
 # ==========================================================
-# 【安卓永久版 · 完整全注释】
-# 功能：打标签自动构建安卓4个安装包，自动上传到GitHub Release
-# 输出文件命名：梦瑶影视2.0-Android-xxx-版本号.apk
+# 【安卓永久版 · 完整全注释 · 昨天成功版】
+# 功能：打标签自动构建4个安卓包，自动上传Release
+# 输出命名：梦瑶影视2.0-Android-xxx-v2.0.0.apk
 # ==========================================================
-name: 梦瑶影视2.0 (安卓构建)
+name: 梦瑶影视2.0 (安卓自动构建)
 
-# 触发条件：打 v 开头标签时自动运行，支持手动触发
+# 触发条件：打v*标签自动构建 / 手动触发
 on:
   push:
     tags:
@@ -13,55 +13,64 @@ on:
   workflow_dispatch:
 
 jobs:
-  build_android:
-    # 安卓构建必须使用 Ubuntu 环境
+  build-android:
+    # 构建环境：Ubuntu（安卓必须）
     runs-on: ubuntu-latest
+    name: 构建安卓
 
     steps:
       # ==============================================
-      # 步骤1：拉取 GitHub 上的最新项目代码
+      # 步骤1：拉取项目代码
       # ==============================================
-      - name: 拉取项目代码
+      - name: 拉取代码仓库
         uses: actions/checkout@v4
 
       # ==============================================
-      # 步骤2：安装 Java 17（安卓构建必需，修复失败）
+      # 步骤2：读取项目版本号（从pubspec.yaml获取）
       # ==============================================
-      - name: 安装Java 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
+      - name: 读取版本号
+        id: get_version
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | tr -d ' ')
+          VERSION=$(echo "$VERSION" | cut -d'+' -f1)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       # ==============================================
-      # 步骤3：安装 Flutter 开发环境
+      # 步骤3：安装Flutter环境
       # ==============================================
-      - name: 安装 Flutter
+      - name: 配置 Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.3'
+          flutter-version: '3.41.7'
           channel: stable
 
       # ==============================================
-      # 步骤4：同意Android SDK许可证（修复报错）
+      # 步骤4：安装Java 21（昨天成功版本）
       # ==============================================
-      - name: 同意安卓许可证
-        run: flutter doctor --android-licenses || true
+      - name: 安装 Java 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'zulu'
+          java-version: '21'
 
       # ==============================================
-      # 步骤5：安装项目依赖
+      # 步骤5：同意Android SDK许可证（修复报错）
       # ==============================================
-      - name: 安装依赖
-        run: flutter pub get
+      - name: 同意 Android SDK 许可证
+        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "ndk;29.0.14033849"
 
       # ==============================================
-      # 步骤6：构建安卓通用APK（全包）
+      # 步骤6：安装项目依赖
       # ==============================================
-      - name: 构建通用APK
-        run: flutter build apk --release
+      - name: 安装依赖并构建通用APK
+        run: |
+          flutter pub get
+          flutter build apk --release
 
       # ==============================================
-      # 步骤7：构建安卓架构分包
+      # 步骤7：构建架构分包（3个独立版本）
       # ==============================================
       - name: 构建架构分包APK
         run: flutter build apk --release --split-per-abi
@@ -79,9 +88,9 @@ jobs:
           mv $DIR/app-x86_64-release.apk            "梦瑶影视2.0-Android-x86_64-$VERSION.apk"
 
       # ==============================================
-      # 步骤9：上传全部APK
+      # 步骤9：上传所有APK到Release
       # ==============================================
-      - name: 上传APK到发布页
+      - name: 上传产物到Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
