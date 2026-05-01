@@ -1,6 +1,6 @@
 # ==========================================================
-# 梦瑶影视2.0 (安卓自动构建)
-# 功能：打标签自动构建带签名APK，自动上传Release
+# 【梦瑶影视2.0 · 安卓自动构建】
+# 签名方式：GitHub 加密变量，路径改为纯英文避免乱码
 # ==========================================================
 name: 梦瑶影视2.0 (安卓自动构建)
 
@@ -16,78 +16,82 @@ jobs:
     name: 构建安卓
 
     steps:
-      - name: 拉取代码仓库
+      # 1. 拉取代码
+      - name: 拉取代码
         uses: actions/checkout@v4
 
-      - name: 读取版本号
-        id: get_version
+      # 2. 读取标签版本号
+      - name: 读取标签版本号
         run: |
-          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | tr -d ' ')
-          VERSION=$(echo "$VERSION" | cut -d'+' -f1)
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          TAG_NAME=${{ github.ref_name }}
+          echo "TAG_NAME=$TAG_NAME" >> $GITHUB_ENV
 
+      # 3. 配置 Flutter
       - name: 配置 Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.41.7'
           channel: stable
 
+      # 4. 安装 Java 21
       - name: 安装 Java 21
         uses: actions/setup-java@v5
         with:
           distribution: 'zulu'
           java-version: '21'
 
-      - name: 安装 NDK 29.0.14033849
-        run: |
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "ndk;29.0.14033849"
-          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/29.0.14033849" >> $GITHUB_ENV
-
+      # 5. 从 Base64 恢复签名文件（路径改为纯英文）
       - name: 恢复签名文件
         run: |
-          echo "${{ secrets.ENCODED_KEYSTORE }}" | base64 -d > ${{ secrets.KEY_PATH }}
+          echo "${{ secrets.ENCODED_KEYSTORE }}" | base64 -d > android/app/release-key.jks
 
-      - name: 配置签名信息
+      # 6. 生成 key.properties（路径直接写死，不依赖变量）
+      - name: 生成签名配置
         run: |
           cat > android/key.properties << EOF
+          storeFile=android/app/release-key.jks
           storePassword=${{ secrets.KEY_STORE_PASSWORD }}
           keyPassword=${{ secrets.KEY_PASSWORD }}
           keyAlias=${{ secrets.KEY_ALIAS }}
-          storeFile=${{ secrets.KEY_PATH }}
           EOF
 
+      # 7. 清理 + 安装依赖
       - name: 清理并安装依赖
         run: |
           flutter clean
           flutter pub get
 
-      - name: 同意 Android SDK 许可证
-        run: |
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
+      # 8. 同意 SDK 许可
+      - name: 同意许可
+        run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
 
+      # 9. 构建通用APK
       - name: 构建通用APK
         run: flutter build apk --release
 
-      - name: 构建架构分包APK
+      # 10. 构建架构分包APK
+      - name: 构建架构APK
         run: flutter build apk --release --split-per-abi
 
+      # 11. 重命名APK
       - name: 重命名APK文件
         run: |
-          VERSION=${{ github.ref_name }}
+          TAG=${{ env.TAG_NAME }}
           DIR=build/app/outputs/flutter-apk
-          mv $DIR/app-release.apk                  "梦瑶影视2.0-Android-$VERSION.apk"
-          mv $DIR/app-arm64-v8a-release.apk         "梦瑶影视2.0-Android-arm64-v8a-$VERSION.apk"
-          mv $DIR/app-armeabi-v7a-release.apk       "梦瑶影视2.0-Android-armeabi-v7a-$VERSION.apk"
-          mv $DIR/app-x86_64-release.apk            "梦瑶影视2.0-Android-x86_64-$VERSION.apk"
+          mv $DIR/app-release.apk          "梦瑶影视2.0-Android-$TAG.apk"
+          mv $DIR/app-arm64-v8a-release.apk "梦瑶影视2.0-Android-arm64-v8a-$TAG.apk"
+          mv $DIR/app-armeabi-v7a-release.apk "梦瑶影视2.0-Android-armeabi-v7a-$TAG.apk"
+          mv $DIR/app-x86_64-release.apk    "梦瑶影视2.0-Android-x86_64-$TAG.apk"
 
+      # 12. 上传到 Release
       - name: 上传产物到Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            梦瑶影视2.0-Android-${{ github.ref_name }}.apk
-            梦瑶影视2.0-Android-arm64-v8a-${{ github.ref_name }}.apk
-            梦瑶影视2.0-Android-armeabi-v7a-${{ github.ref_name }}.apk
-            梦瑶影视2.0-Android-x86_64-${{ github.ref_name }}.apk
+            梦瑶影视2.0-Android-${{ env.TAG_NAME }}.apk
+            梦瑶影视2.0-Android-arm64-v8a-${{ env.TAG_NAME }}.apk
+            梦瑶影视2.0-Android-armeabi-v7a-${{ env.TAG_NAME }}.apk
+            梦瑶影视2.0-Android-x86_64-${{ env.TAG_NAME }}.apk
           tag_name: ${{ github.ref_name }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
